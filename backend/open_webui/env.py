@@ -112,6 +112,10 @@ WEBUI_FAVICON_URL = "https://openwebui.com/favicon.png"
 
 TRUSTED_SIGNATURE_KEY = os.environ.get("TRUSTED_SIGNATURE_KEY", "")
 
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+TURNSTILE_ENABLE = os.environ.get("TURNSTILE_ENABLE", "False").lower() == "true"
+
 ####################################
 # ENV (dev,test,prod)
 ####################################

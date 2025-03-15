@@ -326,7 +326,7 @@ from open_webui.env import (
     ENABLE_WEBSOCKET_SUPPORT,
     BYPASS_MODEL_ACCESS_CONTROL,
     RESET_CONFIG_ON_START,
-    OFFLINE_MODE,
+    OFFLINE_MODE, TURNSTILE_SITE_KEY, TURNSTILE_ENABLE,
 )
 
 
@@ -353,7 +353,7 @@ from open_webui.utils.oauth import OAuthManager
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 
 from open_webui.tasks import stop_task, list_tasks  # Import from tasks.py
-
+from open_webui.utils.turnstile_verify import site_verify
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -1037,12 +1037,33 @@ async def chat_completion(
             ),
         }
 
+        turnstile_token = form_data.pop('turnstile_token','')
+
+        verify_result = await site_verify(client_ip=request.client.host,user_id=user.id,token=turnstile_token)
+        if not verify_result:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Captcha verification failed\n请刷新浏览器后重试",
+            )
+
+        if (not (
+                "session_id" in metadata
+                and metadata["session_id"]
+                and "chat_id" in metadata
+                and metadata["chat_id"]
+                and "message_id" in metadata
+                and metadata["message_id"]
+        ) and user.role != 'admin'):
+            raise HTTPException(status_code=403)
+
         request.state.metadata = metadata
         form_data["metadata"] = metadata
 
         form_data, metadata, events = await process_chat_payload(
             request, form_data, user, metadata, model
         )
+    except HTTPException as e:
+        raise e
 
     except Exception as e:
         log.debug(f"Error processing chat payload: {e}")
@@ -1161,6 +1182,10 @@ async def get_app_config(request: Request):
                 name: config.get("name", name)
                 for name, config in OAUTH_PROVIDERS.items()
             }
+        },
+        "captcha":{
+            'turnstile_site_key': TURNSTILE_SITE_KEY,
+            'enable': TURNSTILE_ENABLE,
         },
         "features": {
             "auth": WEBUI_AUTH,

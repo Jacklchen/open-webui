@@ -135,6 +135,9 @@
 	let files = [];
 	let params = {};
 
+	let turnstileToken = '';
+	let turnstileWidgetId = '';
+
 	$: if (chatIdProp) {
 		(async () => {
 			loading = true;
@@ -449,6 +452,20 @@
 		chatInput?.focus();
 
 		chats.subscribe(() => {});
+
+		if ($config?.captcha?.enable){
+			window.onloadTurnstileCallback = function () {
+				turnstileWidgetId = window.turnstile.render("#turnstile-container", {
+					sitekey: $config?.captcha.turnstile_site_key,
+					cData: $user?.id,
+					action:'chat',
+					callback: function (token) {
+						console.log(`Challenge Success ${token}`);
+						turnstileToken = token;
+					},
+				});
+			};
+		}
 	});
 
 	onDestroy(() => {
@@ -1541,12 +1558,26 @@
 			}))
 			.filter((message) => message?.role === 'user' || message?.content?.trim());
 
+
+
+		if ($config?.captcha?.enable && !turnstileToken) {
+			await new Promise<void>((resolve) => {
+				const checkToken = setInterval(() => {
+					if (turnstileToken) {
+						clearInterval(checkToken);
+						resolve();
+					}
+				}, 100);
+			});
+    	}
+
 		const res = await generateOpenAIChatCompletion(
 			localStorage.token,
 			{
 				stream: stream,
 				model: model.id,
 				messages: messages,
+				turnstile_token:turnstileToken,
 				params: {
 					...$settings?.params,
 					...params,
@@ -1635,6 +1666,10 @@
 		});
 
 		console.log(res);
+		if ($config?.captcha.enable){
+			turnstileToken = '';
+			window.turnstile.reset(turnstileWidgetId);
+		}
 
 		if (res) {
 			taskId = res.task_id;
@@ -1868,6 +1903,12 @@
 </script>
 
 <svelte:head>
+	{#if $config?.captcha?.enable}
+	<script
+		src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback"
+		defer
+	></script>
+	{/if}
 	<title>
 		{$chatTitle
 			? `${$chatTitle.length > 30 ? `${$chatTitle.slice(0, 30)}...` : $chatTitle} | ${$WEBUI_NAME}`
@@ -2139,5 +2180,8 @@
 				<Spinner />
 			</div>
 		</div>
+	{/if}
+	{#if $config?.captcha?.enable}
+		<div id="turnstile-container"></div>
 	{/if}
 </div>

@@ -197,6 +197,10 @@ type Config = {
 	default_locale: string;
 	default_models: string;
 	default_prompt_suggestions: PromptSuggestion[];
+	captcha: {
+		turnstile_site_key: string;
+		enable: boolean;
+	};
 	features: {
 		auth: boolean;
 		auth_trusted_header: boolean;
