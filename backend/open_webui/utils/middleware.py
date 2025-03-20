@@ -1561,9 +1561,8 @@ async def process_chat_response(
                                                         ] += delta_arguments
 
                                     value = delta.get("content")
-                                    reasoning_content = delta.get("reasoning_content")
-                                    reasoning = delta.get("reasoning")
 
+                                    reasoning_content = delta.get("reasoning_content")
                                     if reasoning_content:
                                         if (
                                             not content_blocks
@@ -1590,47 +1589,6 @@ async def process_chat_response(
                                                 content_blocks
                                             )
                                         }
-
-                                    if reasoning is not None:  # Only process if reasoning is not null
-                                        if (
-                                            not content_blocks
-                                            or content_blocks[-1]["type"] != "reasoning"
-                                        ):
-                                            reasoning_block = {
-                                                "type": "reasoning",
-                                                "start_tag": "think",
-                                                "end_tag": "/think",
-                                                "attributes": {
-                                                    "type": "reasoning"
-                                                },
-                                                "content": "",
-                                                "started_at": time.time(),
-                                            }
-                                            content_blocks.append(reasoning_block)
-                                        else:
-                                            reasoning_block = content_blocks[-1]
-
-                                        reasoning_block["content"] += reasoning
-
-                                        data = {
-                                            "content": serialize_content_blocks(
-                                                content_blocks
-                                            )
-                                        }
-                                    elif reasoning is None and content_blocks and content_blocks[-1]["type"] == "reasoning":
-                                        # Exit thinking state when reasoning is null
-                                        reasoning_block = content_blocks[-1]
-                                        reasoning_block["ended_at"] = time.time()
-                                        reasoning_block["duration"] = int(
-                                            reasoning_block["ended_at"]
-                                            - reasoning_block["started_at"]
-                                        )
-                                        content_blocks.append(
-                                            {
-                                                "type": "text",
-                                                "content": "",
-                                            }
-                                        )
 
                                     if value:
                                         if (
