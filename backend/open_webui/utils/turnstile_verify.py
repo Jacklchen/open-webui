@@ -57,5 +57,5 @@ async def site_verify(client_ip: str, user_id: str, token: str):
                 if cdata != user_id:
                     return False
 
-                turnstile_token_cache[user_id] = (token, datetime.now(), 0)
+                turnstile_token_cache[user_id] = (token, datetime.now(), 1)
                 return True
