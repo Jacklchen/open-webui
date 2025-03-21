@@ -8,6 +8,7 @@
 	const i18n = getContext('i18n');
 
 	import { chatCompletion } from '$lib/apis/openai';
+	import { config } from '$lib/stores';
 
 	import ChatBubble from '$lib/components/icons/ChatBubble.svelte';
 	import LightBlub from '$lib/components/icons/LightBlub.svelte';
@@ -18,6 +19,10 @@
 	export let model = null;
 	export let messages = [];
 	export let onAdd = () => {};
+
+	// For CAPTCHA handling
+	let turnstileToken = '';
+	let turnstileWidgetId = '';
 
 	let floatingInput = false;
 
@@ -47,6 +52,18 @@
 		prompt = `${floatingInputValue}\n\`\`\`\n${selectedText}\n\`\`\``;
 		floatingInputValue = '';
 
+		// Check for CAPTCHA if enabled
+		if ($config?.captcha?.enable && !turnstileToken) {
+			await new Promise<void>((resolve) => {
+				const checkToken = setInterval(() => {
+					if (turnstileToken) {
+						clearInterval(checkToken);
+						resolve();
+					}
+				}, 100);
+			});
+		}
+
 		responseContent = '';
 		const [res, controller] = await chatCompletion(localStorage.token, {
 			model: model,
@@ -60,8 +77,17 @@
 				role: message.role,
 				content: message.content
 			})),
+			turnstile_token: turnstileToken, // Add turnstile token
 			stream: true // Enable streaming
 		});
+
+		// Reset turnstile token if CAPTCHA is enabled
+		if ($config?.captcha?.enable) {
+			turnstileToken = '';
+			if (window.turnstile && turnstileWidgetId) {
+				window.turnstile.reset(turnstileWidgetId);
+			}
+		}
 
 		if (res && res.ok) {
 			const reader = res.body.getReader();
@@ -124,6 +150,18 @@
 		const explainText = $i18n.t('Explain this section to me in more detail');
 		prompt = `${explainText}\n\n\`\`\`\n${selectedText}\n\`\`\``;
 
+		// Check for CAPTCHA if enabled
+		if ($config?.captcha?.enable && !turnstileToken) {
+			await new Promise<void>((resolve) => {
+				const checkToken = setInterval(() => {
+					if (turnstileToken) {
+						clearInterval(checkToken);
+						resolve();
+					}
+				}, 100);
+			});
+		}
+
 		responseContent = '';
 		const [res, controller] = await chatCompletion(localStorage.token, {
 			model: model,
@@ -137,8 +175,17 @@
 				role: message.role,
 				content: message.content
 			})),
+			turnstile_token: turnstileToken, // Add turnstile token
 			stream: true // Enable streaming
 		});
+
+		// Reset turnstile token if CAPTCHA is enabled
+		if ($config?.captcha?.enable) {
+			turnstileToken = '';
+			if (window.turnstile && turnstileWidgetId) {
+				window.turnstile.reset(turnstileWidgetId);
+			}
+		}
 
 		if (res && res.ok) {
 			const reader = res.body.getReader();
@@ -218,6 +265,19 @@
 		floatingInput = false;
 		floatingInputValue = '';
 	};
+	// Initialize turnstile if CAPTCHA is enabled
+	if (typeof window !== 'undefined' && $config?.captcha?.enable) {
+		window.onloadTurnstileCallback = function() {
+			turnstileWidgetId = window.turnstile.render("#turnstile-container", {
+				sitekey: $config?.captcha.turnstile_site_key,
+				action: 'floatingButtons',
+				callback: function(token) {
+					console.log(`Challenge Success ${token}`);
+					turnstileToken = token;
+				},
+			});
+		};
+	}
 </script>
 
 <div
@@ -225,6 +285,9 @@
 	class="absolute rounded-lg mt-1 text-xs z-9999"
 	style="display: none"
 >
+	{#if $config?.captcha?.enable}
+		<div id="turnstile-container" style="display: none;"></div>
+	{/if}
 	{#if responseContent === null}
 		{#if !floatingInput}
 			<div
