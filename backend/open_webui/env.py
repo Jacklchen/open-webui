@@ -116,6 +116,11 @@ TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
 TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
 TURNSTILE_ENABLE = os.environ.get("TURNSTILE_ENABLE", "False").lower() == "true"
 
+# 一个token最多能使用的次数
+TURNSTILE_MAX_USE_COUNT = os.environ.get("TURNSTILE_MAX_USE_COUNT", 2)
+# token缓存有效时间，秒
+TURNSTILE_CACHE_EXPIRE = os.environ.get("TURNSTILE_CACHE_EXPIRE", 10)
+
 ####################################
 # ENV (dev,test,prod)
 ####################################
